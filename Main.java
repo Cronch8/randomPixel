@@ -11,10 +11,17 @@ import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JTextField;
 
+/*
+ *
+ * TODO: make the entity more likely to move away from nearby white cells
+ * TODO: one thread per operaton: one for moving the entity, other for dimming the screen.
+ *
+*/
+
 class Program {
-    private static final int height = 1000; 
-    private static final int width = 1500; 
-    private static int dt = 1000000/200; //default update rate
+    private static final int height = 1080; 
+    private static final int width = 1920; 
+    private static int dt = 1000000000/200; //default update rate
     private static BufferedImage image = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
     private static Entity entity;
     private static JFrame frame = new JFrame("my cool window!");
@@ -23,12 +30,12 @@ class Program {
         //argumetn parsing
         if (args.length == 1) {
             try {
-                dt = 1000000/Integer.valueOf(args[0]);
+                dt = 1000000000/Integer.valueOf(args[0]);
             } catch (Exception e) {
-                System.out.println("argument is not an integer, defaulting to " + 1000000/dt + " updates per sec");
+                System.out.println("argument is not an integer, defaulting to " + 1000000000/dt + " updates per sec");
             }
         } else {
-            System.out.println("update rate argument not provided, defaulting to " + 1000000/dt + " updates per sec");
+            System.out.println("update rate argument not provided, defaulting to " + 1000000000/dt + " updates per sec");
         }
 
         //make initial black image
@@ -41,8 +48,9 @@ class Program {
 
         //update loops
         ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor();
-        executor.scheduleAtFixedRate(Program::entityUpdate, 0, dt, TimeUnit.MICROSECONDS);
-        executor.scheduleAtFixedRate(Program::imageProcessing, 0, 1000/30, TimeUnit.MILLISECONDS);
+        executor.scheduleAtFixedRate(Program::entityUpdate, 0, dt, TimeUnit.NANOSECONDS);
+        executor.scheduleAtFixedRate(Program::imageProcessing, 0, 1000000/15, TimeUnit.MICROSECONDS);
+        //executor.scheduleAtFixedRate(Program::render, 0, 1000/60, TimeUnit.MILLISECONDS);// use when multithreading
 
         //make the window
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -50,6 +58,11 @@ class Program {
         frame.add(new JLabel(new ImageIcon(image)));
         frame.pack();
         frame.setVisible(true);
+    }
+
+    //rendering
+    private static void render() {
+        frame.repaint();
     }
 
     //entity update loop
@@ -77,20 +90,21 @@ class Program {
                 break;
         }
         image.setRGB(entity.x, entity.y, convertARGB(150));
-        frame.repaint();
+        frame.repaint();// remove this and use the scheduler with render() instead when multithreading
     }
 
 
-    //dims all pixels by 1 value
+    //dim all pixels
     private static void imageProcessing() {
         for (int x = 0; x < width; x++) {
             for (int y = 0; y < height; y++) {
                 List<Integer> l = splitARGB(image.getRGB(x, y));
-                int newBrightness = Math.max(l.get(1)-1, 0);
-                image.setRGB(x, y, convertARGB(newBrightness));
+                int r = Math.max(l.get(1)-5, 0);
+                int g = Math.max(l.get(2)-3, 0);
+                int b = Math.max(l.get(3)-2, 0);
+                image.setRGB(x, y, convertARGB(255,r,g,b));
             }
         }
-        //System.out.println("--------------------------");
     }
 
 
@@ -110,7 +124,7 @@ class Program {
              clamp(lightness, 0, 255);
     }
 
-    private static List<Integer> splitARGB(int ARGB) {//lmao the bitshifting got me into such a C++ mindset that i used a Vector instead of a List
+    private static List<Integer> splitARGB(int ARGB) {//lmao the bitshifting got me into such a C++ mindset that at first i used a Vector instead of a List
         List<Integer> l = new ArrayList<>();
         l.add((ARGB >>> 24) & 0xFF);
         l.add((ARGB >>> 16) & 0xFF);
