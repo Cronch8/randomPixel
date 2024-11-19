@@ -12,8 +12,8 @@ import javax.swing.JLabel;
 import javax.swing.JTextField;
 
 class Program {
-    private static final int height = 300; 
-    private static final int width = 500; 
+    private static final int height = 1000; 
+    private static final int width = 1500; 
     private static int dt = 1000000/200; //default update rate
     private static BufferedImage image = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
     private static Entity entity;
