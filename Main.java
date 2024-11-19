@@ -35,24 +35,28 @@ class Program {
     }
 
     public static void run() {
-        image.setRGB(entity.x, entity.y, (255 << 24) | (255 << 16) | (255 << 8) | 255);
+        image.setRGB(entity.x, entity.y, convertARGB(255,170,170,170));
         int rnd = (int) Math.floor(Math.random()*4);
         switch (rnd) {
             case 0:
                 System.out.println("entity at - x: " + entity.x + " y: " + entity.y);
                 entity.x += 1;
+                if (entity.x > width) entity.x = 0;
                 break;
             case 1:
                 System.out.println("entity at - x: " + entity.x + " y: " + entity.y);
                 entity.x -= 1;
+                if (entity.x < width) entity.x = width;
                 break;
             case 2:
                 System.out.println("entity at - x: " + entity.x + " y: " + entity.y);
                 entity.y += 1;
+                if (entity.y > width) entity.y = 0;
                 break;
             case 3:
                 System.out.println("entity at - x: " + entity.x + " y: " + entity.y);
                 entity.y -= 1;
+                if (entity.y < width) entity.y = height;
                 break;
             default:
                 break;
