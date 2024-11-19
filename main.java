@@ -21,7 +21,7 @@ class Program {
 
         JFrame frame = new JFrame("my cool window!");
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        frame.getContentPane().add(new JTextField("first window!"));// ecuivalent to: `frame.add(new JTextField("first window!"));`
+        frame.getContentPane().add(new JTextField("first window!"));// equivalent to: `frame.add(new JTextField("first window!"));`
         frame.pack();
         frame.setVisible(true);
     }
