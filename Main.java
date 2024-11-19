@@ -15,14 +15,9 @@ class Program {
     private static Entity entity;
 
     public static void main(String[] args) {
-        int alpha = 255; 
-        int red = 0; 
-        int green = 0; 
-        int blue = 0; 
         for (int y = 0; y < height; y++) {
             for (int x = 0; x < width; x++) {
-                int rgb = (alpha << 24) | (red << 16) | (green << 8) | blue;
-                image.setRGB(x, y, rgb);  // Set pixel color
+                image.setRGB(x, y, convertARGB(0));  // Set pixel color
             }
         }
         entity = new Entity(width/2, height/2);
@@ -61,5 +56,14 @@ class Program {
             default:
                 break;
         }
+        image.setRGB(entity.x, entity.y, convertARGB(150));
+    }
+
+
+    private static int convertARGB(int a, int r, int g, int b) {
+        return (255 << 24) | (255 << 16) | (255 << 8) | 255;
+    }
+    private static int convertARGB(int lightness) {
+        return (255 << 24) | (lightness << 16) | (lightness << 8) | lightness;
     }
 }
