@@ -11,8 +11,10 @@ import javax.swing.JTextField;
 class Program {
     private static final int height = 300; 
     private static final int width = 500; 
+    private static final int dt = 1000/600; 
     private static BufferedImage image = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
     private static Entity entity;
+    private static JFrame frame = new JFrame("my cool window!");
 
     public static void main(String[] args) {
         for (int y = 0; y < height; y++) {
@@ -23,9 +25,8 @@ class Program {
         entity = new Entity(width/2, height/2);
 
         ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor();
-        executor.scheduleAtFixedRate(Program::run, 1, 500, TimeUnit.MILLISECONDS);
+        executor.scheduleAtFixedRate(Program::run, 0, dt, TimeUnit.MILLISECONDS);
 
-        JFrame frame = new JFrame("my cool window!");
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         frame.getContentPane().add(new JTextField("first window!"));// equivalent to: `frame.add(new JTextField("first window!"));`
         frame.add(new JLabel(new ImageIcon(image)));
@@ -57,6 +58,7 @@ class Program {
                 break;
         }
         image.setRGB(entity.x, entity.y, convertARGB(150));
+        frame.repaint();
     }
 
 
