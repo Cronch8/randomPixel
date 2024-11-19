@@ -13,17 +13,27 @@ import javax.swing.JTextField;
 
 /*
  *
- * WIP: make the entity more likely to move away from nearby white cells
- *      - X/Y weight is done, now just revamp the randomization algorythm
  * TODO: one thread per operaton: one for moving the entity, other for dimming the screen.
+ * TODO: multiple entity support
  *
 */
 
 class Program {
+
+    //size of the canvas
     private static final int height = 1000; 
     private static final int width = 1500; 
-    private static final int rangeFactor = 20;//the size of the square around which the entity looks, to steer away from newly coloured pixels
-    private static int dt = 1000000000/200; //default update rate
+
+    //how likely the entity is to step away from nearby color (smaller = more likely)
+    private static final int colorAvoidance = 17000;
+
+    //the size of the square in which the entity looks for colors, to move away from them (in fraction of canvas size)
+    private static final int rangeFactor = 6;
+
+    // how many pixels are sampled in each direction to look for colors
+    private static final int rangeResulution = 5;
+
+    private static int dt = 1000000000/200;//default update rate
     private static BufferedImage image = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
     private static Entity entity;
     private static JFrame frame = new JFrame("my cool window!");
@@ -64,7 +74,7 @@ class Program {
     }
 
 
-    //rendering
+    //rendering (use when implemting multithreading)
     private static void render() {
         frame.repaint();
     }
@@ -77,29 +87,29 @@ class Program {
         //Positive cordinates go twoard up-right
         int weightX = 0;
         int weightY = 0;
-        for (int i = 0; i < width/rangeFactor; i+=8) {//top right
-            for (int j = 0; j < width/rangeFactor; j+=8) {
+        for (int i = 0; i < width/rangeFactor; i+=width/rangeFactor/rangeResulution) {//top right
+            for (int j = 0; j < width/rangeFactor; j+=width/rangeFactor/rangeResulution) {
                 int val = splitARGB(getColorLoopsafe(entity.x + i, entity.y + j)).get(3);
                 weightX -= val;
                 weightY -= val;
             }
         }
-        for (int i = 0; i > -width/rangeFactor; i-=8) {//top left
-            for (int j = 0; j < width/rangeFactor; j+=8) {
+        for (int i = 0; i > -width/rangeFactor; i-=width/rangeFactor/rangeResulution) {//top left
+            for (int j = 0; j < width/rangeFactor; j+=width/rangeFactor/rangeResulution) {
                 int val = splitARGB(getColorLoopsafe(entity.x + i, entity.y + j)).get(3);
                 weightX += val;
                 weightY -= val;
             }
         }
-        for (int i = 0; i < width/rangeFactor; i+=8) {//bottom right
-            for (int j = 0; j > -width/rangeFactor; j-=8) {
+        for (int i = 0; i < width/rangeFactor; i+=width/rangeFactor/rangeResulution) {//bottom right
+            for (int j = 0; j > -width/rangeFactor; j-=width/rangeFactor/rangeResulution) {
                 int val = splitARGB(getColorLoopsafe(entity.x + i, entity.y + j)).get(3);
                 weightX -= val;
                 weightY += val;
             }
         }
-        for (int i = 0; i > -width/rangeFactor; i-=8) {//bottom left
-            for (int j = 0; j > -width/rangeFactor; j-=8) {
+        for (int i = 0; i > -width/rangeFactor; i-=width/rangeFactor/rangeResulution) {//bottom left
+            for (int j = 0; j > -width/rangeFactor; j-=width/rangeFactor/rangeResulution) {
                 int val = splitARGB(getColorLoopsafe(entity.x + i, entity.y + j)).get(3);
                 weightX += val;
                 weightY += val;
@@ -107,30 +117,24 @@ class Program {
         }
 
         //calculate movement directions
-        image.setRGB(entity.x, entity.y, convertARGB(255));
-        int rnd = (int) Math.floor(Math.random()*4);
-        switch (rnd) {
-            case 0:
-                entity.x += 1;
-                if (entity.x >= width) entity.x = 0;
-                break;
-            case 1:
-                entity.x -= 1;
-                if (entity.x <= 0) entity.x = width-1;
-                break;
-            case 2:
-                entity.y += 1;
-                if (entity.y >= height) entity.y = 0;
-                break;
-            case 3:
-                entity.y -= 1;
-                if (entity.y <= 0) entity.y = height-1;
-                break;
-            default:
-                break;
+        int moveRight = (int)Math.round(Math.random()*3000-1500) + weightX/colorAvoidance;
+        int moveUp = (int)Math.round(Math.random()*3000-1500) + weightY/colorAvoidance;
+        if (moveRight > 1000) {
+            entity.x += 1;
+            if (entity.x >= width) entity.x = 0;
+        } else if (moveRight < -1000) {
+            entity.x -= 1;
+            if (entity.x <= 0) entity.x = width-1;
         }
-        image.setRGB(entity.x, entity.y, convertARGB(150));
-        frame.repaint();// remove this and use the scheduler with render() instead when multithreading
+        if (moveUp > 1000) {
+            entity.y += 1;
+            if (entity.y >= height) entity.y = 0;
+        } else if (moveUp < -1000) {
+            entity.y -= 1;
+            if (entity.y <= 0) entity.y = height-1;
+        }
+        image.setRGB(entity.x, entity.y, convertARGB(255));
+        frame.repaint();// remove this and use the scheduler with render() func instead when multithreading
     }
 
 
