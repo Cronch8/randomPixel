@@ -13,14 +13,16 @@ import javax.swing.JTextField;
 
 /*
  *
- * TODO: make the entity more likely to move away from nearby white cells
+ * WIP: make the entity more likely to move away from nearby white cells
+ *      - X/Y weight is done, now just revamp the randomization algorythm
  * TODO: one thread per operaton: one for moving the entity, other for dimming the screen.
  *
 */
 
 class Program {
-    private static final int height = 1080; 
-    private static final int width = 1920; 
+    private static final int height = 1000; 
+    private static final int width = 1500; 
+    private static final int rangeFactor = 20;//the size of the square around which the entity looks, to steer away from newly coloured pixels
     private static int dt = 1000000000/200; //default update rate
     private static BufferedImage image = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
     private static Entity entity;
@@ -38,10 +40,11 @@ class Program {
             System.out.println("update rate argument not provided, defaulting to " + 1000000000/dt + " updates per sec");
         }
 
-        //make initial black image
+        //make initial image
         for (int y = 0; y < height; y++) {
             for (int x = 0; x < width; x++) {
-                image.setRGB(x, y, convertARGB(0));
+                //image.setRGB(x, y, convertARGB((int) Math.round(Math.random()*200)));//start screen with random brightness
+                image.setRGB(x, y, convertARGB(0));//all black
             }
         }
         entity = new Entity(width/2, height/2);
@@ -60,13 +63,50 @@ class Program {
         frame.setVisible(true);
     }
 
+
     //rendering
     private static void render() {
         frame.repaint();
     }
 
-    //entity update loop
+
+    //entity movement and coloring loop
     private static void entityUpdate() {
+        //Add more weight to directions where there's less brighness by counting 
+        //the total brightness in each 4 sectors, and determining the direction of least color.
+        //Positive cordinates go twoard up-right
+        int weightX = 0;
+        int weightY = 0;
+        for (int i = 0; i < width/rangeFactor; i+=8) {//top right
+            for (int j = 0; j < width/rangeFactor; j+=8) {
+                int val = splitARGB(getColorLoopsafe(entity.x + i, entity.y + j)).get(3);
+                weightX -= val;
+                weightY -= val;
+            }
+        }
+        for (int i = 0; i > -width/rangeFactor; i-=8) {//top left
+            for (int j = 0; j < width/rangeFactor; j+=8) {
+                int val = splitARGB(getColorLoopsafe(entity.x + i, entity.y + j)).get(3);
+                weightX += val;
+                weightY -= val;
+            }
+        }
+        for (int i = 0; i < width/rangeFactor; i+=8) {//bottom right
+            for (int j = 0; j > -width/rangeFactor; j-=8) {
+                int val = splitARGB(getColorLoopsafe(entity.x + i, entity.y + j)).get(3);
+                weightX -= val;
+                weightY += val;
+            }
+        }
+        for (int i = 0; i > -width/rangeFactor; i-=8) {//bottom left
+            for (int j = 0; j > -width/rangeFactor; j-=8) {
+                int val = splitARGB(getColorLoopsafe(entity.x + i, entity.y + j)).get(3);
+                weightX += val;
+                weightY += val;
+            }
+        }
+
+        //calculate movement directions
         image.setRGB(entity.x, entity.y, convertARGB(255));
         int rnd = (int) Math.floor(Math.random()*4);
         switch (rnd) {
@@ -110,6 +150,10 @@ class Program {
 
 
     //utility funcs
+    private static int getColorLoopsafe(int x, int y) {
+        return image.getRGB((x % width + width) % width, (y % height + height) % height);
+    }
+
     private static int convertARGB(int a, int r, int g, int b) {
         return (clamp(a, 0, 255) << 24) | 
                (clamp(r, 0, 255) << 16) | 
@@ -126,7 +170,7 @@ class Program {
 
     private static List<Integer> splitARGB(int ARGB) {//lmao the bitshifting got me into such a C++ mindset that at first i used a Vector instead of a List
         List<Integer> l = new ArrayList<>();
-        l.add((ARGB >>> 24) & 0xFF);
+        l.add((ARGB >>> 24) & 0xFF);// `& 0xFF` zeroes the negative indicator bit
         l.add((ARGB >>> 16) & 0xFF);
         l.add((ARGB >>> 8 ) & 0xFF);
         l.add((ARGB >>> 0 ) & 0xFF);
