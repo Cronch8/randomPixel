@@ -39,6 +39,23 @@ class Program {
     }
 
     public static void run() {
-        image.setRGB(x, y, (255 << 24) | (255 << 16) | (255 << 8) | 255);
+        image.setRGB(entity.x, entity.y, (255 << 24) | (255 << 16) | (255 << 8) | 255);
+        int rnd = (int) Math.floor(Math.random()*4);
+        switch (rnd) {
+            case 0:
+                entity.x += 1;
+                break;
+            case 1:
+                entity.x -= 1;
+                break;
+            case 2:
+                entity.y += 1;
+                break;
+            case 3:
+                entity.y -= 1;
+                break;
+            default:
+                break;
+        }
     }
 }
