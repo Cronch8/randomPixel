@@ -1,6 +1,10 @@
+import java.awt.Point;
 import java.awt.image.BufferedImage;
+import java.awt.image.Raster;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Vector;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -11,11 +15,12 @@ import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JTextField;
 
+
 /*
  *
- * TODO: one thread per operaton: one for moving the entity, other for dimming the screen.
+ * WIP: add pixels that need to be dimmed into an array, then dim only the pixels that need to be dimmed, not everything. then remove items from array when they reach black
+ * WIP: one thread per operaton: one for moving the entity, other for dimming the screen.
  * TODO: multiple entity support
- * TODO: add pixels that need to be dimmed into an array, then dim only the pixels that need to be dimmed, not everything. then remove items from array when they reach black
  *
 */
 
@@ -46,6 +51,7 @@ class Program {
     private static BufferedImage image = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
     private static Entity entity;
     private static JFrame frame = new JFrame("my cool window!");
+    private static Map<Point, Raster> pixelsToUpdate = new LinkedHashMap<>();//contains all non-black pixels, so that they can be decayed
 
     public static void main(String[] args) {
         //argumetn parsing
@@ -69,7 +75,7 @@ class Program {
         entity = new Entity(width/2, height/2);
 
         //update loops
-        ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor();
+        ScheduledExecutorService executor = Executors.newScheduledThreadPool(2);//does this just magically allow me to make stuff multithreaded? (i replaced it with Executors.newSingleThreadSceduledExecutor)
         executor.scheduleAtFixedRate(Program::entityUpdate, 0, dt, TimeUnit.NANOSECONDS);
         executor.scheduleAtFixedRate(Program::imageProcessing, 0, 1000000/fadeUpdateRate, TimeUnit.MICROSECONDS);
         //executor.scheduleAtFixedRate(Program::render, 0, 1000/60, TimeUnit.MILLISECONDS);// use when multithreading
@@ -148,12 +154,10 @@ class Program {
         }
 
         //make the line thiccc 
-        for (int i = 0; i < thickness; i++) {//bottom left
-            for (int j = 0; j < thickness; j++) {
-                setColorLoopsafe(entity.x, entity.y, convertARGB(255));
-                setColorLoopsafe(entity.x, entity.y+i, convertARGB(255));
-                setColorLoopsafe(entity.x+j, entity.y, convertARGB(255));
-                setColorLoopsafe(entity.x+j, entity.y+i, convertARGB(255));
+        for (int y = 0; y < thickness; y++) {//bottom left
+            for (int x = 0; x < thickness; x++) {
+                setColorLoopsafe(entity.x+x, entity.y+y, convertARGB(255));
+                pixelsToUpdate.put(new Point(entity.x+x, entity.y+y), image.getTile(x, y));
             }
         }
         frame.repaint();// remove this and use the scheduler with render() func instead when multithreading
@@ -164,17 +168,21 @@ class Program {
     private static void imageProcessing() {
         //int black = 0;//black to non-black ratio for bebugging
         //int nonBlack = 0;
-        for (int x = 0; x < width; x++) {
-            for (int y = 0; y < height; y++) {
-                //if (splitARGB(image.getRGB(x, y)).get(3) == 0) black++;
-                //else nonBlack++;
-                List<Integer> l = splitARGB(image.getRGB(x, y));
-                int r = Math.max(l.get(1)-5, 0);
-                int g = Math.max(l.get(2)-3, 0);
-                int b = Math.max(l.get(3)-2, 0);
-                image.setRGB(x, y, convertARGB(255,r,g,b));
+        //loops through each non-black pixel
+        int[] color = new int[4];
+        pixelsToUpdate.forEach((Point p, Raster raster) -> {
+            raster.getPixel(p.x, p.y, color);
+            int r = Math.max(color[1]-5, 0);
+            int g = Math.max(color[2]-3, 0);
+            int b = Math.max(color[3]-2, 0);
+            image.setRGB(p.x, p.y, convertARGB(255,r,g,b));
+            if (r+g+b == 0) {
+                pixelsToUpdate.remove(p);
+                System.out.println("Removing Pixel at: " + p.x + " | " + p.y);
             }
-        }
+            System.out.println("p: " + p + " | size: " + pixelsToUpdate.size());
+        });
+
         //System.out.println("black to non-black pixel ratio: " + (double)nonBlack / (double)black);
     }
 
