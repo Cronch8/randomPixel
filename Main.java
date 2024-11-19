@@ -43,15 +43,19 @@ class Program {
         int rnd = (int) Math.floor(Math.random()*4);
         switch (rnd) {
             case 0:
+                System.out.println("entity at - x: " + entity.x + " y: " + entity.y);
                 entity.x += 1;
                 break;
             case 1:
+                System.out.println("entity at - x: " + entity.x + " y: " + entity.y);
                 entity.x -= 1;
                 break;
             case 2:
+                System.out.println("entity at - x: " + entity.x + " y: " + entity.y);
                 entity.y += 1;
                 break;
             case 3:
+                System.out.println("entity at - x: " + entity.x + " y: " + entity.y);
                 entity.y -= 1;
                 break;
             default:
