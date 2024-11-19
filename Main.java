@@ -15,6 +15,7 @@ import javax.swing.JTextField;
  *
  * TODO: one thread per operaton: one for moving the entity, other for dimming the screen.
  * TODO: multiple entity support
+ * TODO: add pixels that need to be dimmed into an array, then dim only the pixels that need to be dimmed, not everything. then remove items from array when they reach black
  *
 */
 
@@ -24,19 +25,24 @@ class Program {
     private static final int height = 1000; 
     private static final int width = 1500; 
 
-    //how likely the entity is to step away from nearby color (smaller = more likely). Negative values supported
-    private static final int colorAvoidance = 370;
+    //how likely the entity is to step away from nearby color (smaller value = more likely). Negative values supported, makes it step twoard color instead
+    private static final int colorAvoidance = 300;
 
-    //the size of the square in which the entity looks for colors, to move away from them (in fraction of canvas size)
+    //the size of the square in which the entity looks for colors, to move away from them (in fraction of canvas size, where 10 on a 1000x1000 window is 100 pixels)
     private static final int rangeFactor = 4;
 
-    // how many pixels are sampled in each direction to look for colors (performance intensive!)
-    private static final int rangeResulution = 5;
+    //how many pixels are sampled in each direction to look for colors (performance intensive!)
+    private static final int rangeResulution = 3;
 
-    //how many times per sec the background brigtnes gets reduced
-    private static final int fadeUpdateRate = 17;
+    //how many times per sec the background brigtnes gets reduced (performance intensive!)
+    private static final int fadeUpdateRate = 15;
 
-    private static int dt = 1000000000/200;//default update rate
+    //how many pixels thiccc the line is that the entity makes (performance intensive!)
+    private static final int thickness = 1;
+
+    private static int prevMovementDirX = 0;
+    private static int prevMovementDirY = 0;
+    private static int dt = 1000000000/1000;//default update rate
     private static BufferedImage image = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
     private static Entity entity;
     private static JFrame frame = new JFrame("my cool window!");
@@ -120,31 +126,48 @@ class Program {
         }
 
         //calculate movement directions
-        int moveRight = (int)Math.round(Math.random()*3000-1500) + weightX/colorAvoidance;
-        int moveUp = (int)Math.round(Math.random()*3000-1500) + weightY/colorAvoidance;
+        int moveRight = (int)Math.round(Math.random()*3000-1500) + weightX/colorAvoidance + prevMovementDirX*300;
+        int moveUp = (int)Math.round(Math.random()*3000-1500) + weightY/colorAvoidance + prevMovementDirY*300;
         if (moveRight > 1000) {
             entity.x += 1;
+            prevMovementDirX = 1;
             if (entity.x >= width) entity.x = 0;
         } else if (moveRight < -1000) {
             entity.x -= 1;
+            prevMovementDirX = -1;
             if (entity.x <= 0) entity.x = width-1;
         }
         if (moveUp > 1000) {
             entity.y += 1;
+            prevMovementDirY = 1;
             if (entity.y >= height) entity.y = 0;
         } else if (moveUp < -1000) {
             entity.y -= 1;
+            prevMovementDirY = -1;
             if (entity.y <= 0) entity.y = height-1;
         }
-        image.setRGB(entity.x, entity.y, convertARGB(255));
+
+        //make the line thiccc 
+        for (int i = 0; i < thickness; i++) {//bottom left
+            for (int j = 0; j < thickness; j++) {
+                setColorLoopsafe(entity.x, entity.y, convertARGB(255));
+                setColorLoopsafe(entity.x, entity.y+i, convertARGB(255));
+                setColorLoopsafe(entity.x+j, entity.y, convertARGB(255));
+                setColorLoopsafe(entity.x+j, entity.y+i, convertARGB(255));
+            }
+        }
         frame.repaint();// remove this and use the scheduler with render() func instead when multithreading
     }
 
 
     //dim all pixels
     private static void imageProcessing() {
+        //int black = 0;//black to non-black ratio for bebugging
+        //int nonBlack = 0;
         for (int x = 0; x < width; x++) {
             for (int y = 0; y < height; y++) {
+                //if (splitARGB(image.getRGB(x, y)).get(3) == 0) black++;
+                //else nonBlack++;
                 List<Integer> l = splitARGB(image.getRGB(x, y));
                 int r = Math.max(l.get(1)-5, 0);
                 int g = Math.max(l.get(2)-3, 0);
@@ -152,6 +175,7 @@ class Program {
                 image.setRGB(x, y, convertARGB(255,r,g,b));
             }
         }
+        //System.out.println("black to non-black pixel ratio: " + (double)nonBlack / (double)black);
     }
 
 
@@ -160,6 +184,12 @@ class Program {
     private static int getColorLoopsafe(int x, int y) {
         return image.getRGB((x % width + width) % width, (y % height + height) % height);
     }
+
+    private static void setColorLoopsafe(int x, int y, int color) {
+        image.setRGB((x % width + width) % width, (y % height + height) % height, color);
+        return;
+    }
+
 
     private static int convertARGB(int a, int r, int g, int b) {
         return (clamp(a, 0, 255) << 24) | 
