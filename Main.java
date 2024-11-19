@@ -24,14 +24,17 @@ class Program {
     private static final int height = 1000; 
     private static final int width = 1500; 
 
-    //how likely the entity is to step away from nearby color (smaller = more likely)
-    private static final int colorAvoidance = 17000;
+    //how likely the entity is to step away from nearby color (smaller = more likely). Negative values supported
+    private static final int colorAvoidance = 370;
 
     //the size of the square in which the entity looks for colors, to move away from them (in fraction of canvas size)
-    private static final int rangeFactor = 6;
+    private static final int rangeFactor = 4;
 
-    // how many pixels are sampled in each direction to look for colors
+    // how many pixels are sampled in each direction to look for colors (performance intensive!)
     private static final int rangeResulution = 5;
+
+    //how many times per sec the background brigtnes gets reduced
+    private static final int fadeUpdateRate = 17;
 
     private static int dt = 1000000000/200;//default update rate
     private static BufferedImage image = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
@@ -62,12 +65,12 @@ class Program {
         //update loops
         ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor();
         executor.scheduleAtFixedRate(Program::entityUpdate, 0, dt, TimeUnit.NANOSECONDS);
-        executor.scheduleAtFixedRate(Program::imageProcessing, 0, 1000000/15, TimeUnit.MICROSECONDS);
+        executor.scheduleAtFixedRate(Program::imageProcessing, 0, 1000000/fadeUpdateRate, TimeUnit.MICROSECONDS);
         //executor.scheduleAtFixedRate(Program::render, 0, 1000/60, TimeUnit.MILLISECONDS);// use when multithreading
 
         //make the window
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        frame.getContentPane().add(new JTextField("first window!"));// equivalent to: `frame.add(new JTextField("first window!"));`
+        frame.getContentPane().add(new JTextField("moving thingy"));// equivalent to: `frame.add(new JTextField(""));`
         frame.add(new JLabel(new ImageIcon(image)));
         frame.pack();
         frame.setVisible(true);
