@@ -18,9 +18,7 @@ import javax.swing.JTextField;
 
 /*
  *
- * WIP: add pixels that need to be dimmed into an array, then dim only the pixels that need to be dimmed, not everything. then remove items from array when they reach black
- * WIP: one thread per operaton: one for moving the entity, other for dimming the screen.
- * TODO: why did i make an entity class? there already exists a point class that i'm using...
+ * TODO: one thread per operaton: one for moving the entity, other for dimming the screen. Actually, multithreading this is not trivial, what about race conditions?
  * TODO: multiple entity support
  *
 */
@@ -30,30 +28,34 @@ class Program {
     //size of the canvas
     private static final int height = 1000; 
     private static final int width = 1500; 
-
-    //how likely the entity is to step away from nearby color (smaller value = more likely). Negative values supported, makes it step twoard color instead
-    private static final int colorAvoidance = 300;
-
+    
     //the size of the square in which the entity looks for colors, to move away from them (in fraction of canvas size, where 10 on a 1000x1000 window is 100 pixels)
     private static final int rangeFactor = 4;
 
+    //how likely the entity is to step away from nearby color (smaller value = more likely). Negative values supported, makes it step twoard color instead
+    private static final int colorAvoidance = 300;
+    
     //how many pixels are sampled in each direction to look for colors (performance intensive!)
     private static final int rangeResulution = 3;
-
+    
     //how many times per sec the background brigtnes gets reduced (performance intensive!)
-    private static final int fadeUpdateRate = 60;
+    private static final int fadeUpdateRate = 20;
+    
+    //how many values of brightness is subtracted from each pixel in each fade update
+    private static final int[] decayRates = new int[]{0, 5, 3, 2};
+
+    //the color that the moving entity leaves behind
+    private static final int headColor = convertARGB(255,210,255,180);
 
     //how many pixels thiccc the line is that the entity makes (performance intensive!)
     private static final int thickness = 1;
-    
-    //the color that the moving entity leaves behind
-    private static final int headColor = convertARGB(255,255,230,180);
 
+    //initialization
     private static int prevMovementDirX = 0;
     private static int prevMovementDirY = 0;
     private static int dt = 1000000000/1000;//default update rate
     private static BufferedImage image = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
-    private static Entity entity;
+    private static Point entity;
     private static JFrame frame = new JFrame("my cool window!");
     private static Map<Point, Integer> pixelsToUpdate = new LinkedHashMap<>();//contains all non-black pixels, so that they can be decayed
 
@@ -76,7 +78,7 @@ class Program {
                 image.setRGB(x, y, convertARGB(0));//all black
             }
         }
-        entity = new Entity(width/2, height/2);
+        entity = new Point(width/2, height/2);
 
         //update loops
         ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor();//does this just magically allow me to make stuff multithreaded? (i replaced it with Executors.newSingleThreadSceduledExecutor)
@@ -177,9 +179,9 @@ class Program {
         for (Map.Entry<Point, Integer> entry : pixelsToUpdate.entrySet()) {
             colors = splitARGB(entry.getValue());
             //System.out.print(" || r:" + colors[1] + " g:" + colors[2] + " b:" + colors[3]);
-            int r = Math.max(colors[1]-5, 0);
-            int g = Math.max(colors[2]-3, 0);
-            int b = Math.max(colors[3]-2, 0);
+            int r = Math.max(colors[1]-decayRates[1], 0);
+            int g = Math.max(colors[2]-decayRates[2], 0);
+            int b = Math.max(colors[3]-decayRates[3], 0);
             image.setRGB(entry.getKey().x, entry.getKey().y, convertARGB(255,r,g,b));
             pixelsToUpdate.replace(entry.getKey(), convertARGB(255,r,g,b));
             if (r+g+b == 0) {
