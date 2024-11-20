@@ -29,23 +29,23 @@ class Program {
     private static final int height = 1000; 
     private static final int width = 1500; 
     
-    //the size of the square in which the entity looks for colors, to move away from them (in fraction of canvas size, where 10 on a 1000x1000 window is 100 pixels)
-    private static final int rangeFactor = 4;
-
     //how likely the entity is to step away from nearby color (smaller value = more likely). Negative values supported, makes it step twoard color instead
-    private static final int colorAvoidance = 300;
+    private static final int colorAvoidance = 40;
     
+    //the size of the square in which the entity looks for colors, to move away from them (in fraction of canvas size, where 10 on a 1000x1000 window is 100 pixels)
+    private static final int rangeFactor = 5;
+
     //how many pixels are sampled in each direction to look for colors (performance intensive!)
-    private static final int rangeResulution = 3;
+    private static final int rangeResulution = 6;
     
     //how many times per sec the background brigtnes gets reduced (performance intensive!)
-    private static final int fadeUpdateRate = 20;
+    private static final int fadeUpdateRate = 15;
     
-    //how many values of brightness is subtracted from each pixel in each fade update
-    private static final int[] decayRates = new int[]{0, 5, 3, 2};
+    //how many values of brightness is subtracted from each pixel in each fade update (ARGB format, currently Alpha does nothing)
+    private static final int[] decayRates = new int[]{0, 30, 2, 1};
 
     //the color that the moving entity leaves behind
-    private static final int headColor = convertARGB(255,210,255,180);
+    private static final int headColor = convertARGB(255,255,180,110);
 
     //how many pixels thiccc the line is that the entity makes (performance intensive!)
     private static final int thickness = 1;
@@ -53,7 +53,7 @@ class Program {
     //initialization
     private static int prevMovementDirX = 0;
     private static int prevMovementDirY = 0;
-    private static int dt = 1000000000/1000;//default update rate
+    private static int dt = 1000000000/5000;//default update rate
     private static BufferedImage image = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
     private static Point entity;
     private static JFrame frame = new JFrame("my cool window!");
@@ -109,30 +109,36 @@ class Program {
         //Positive cordinates go twoard up-right
         int weightX = 0;
         int weightY = 0;
+        int val = 0;
+        int[] color;
         for (int i = 0; i < width/rangeFactor; i+=width/rangeFactor/rangeResulution) {//top right
             for (int j = 0; j < width/rangeFactor; j+=width/rangeFactor/rangeResulution) {
-                int val = splitARGB(getColorLoopsafe(entity.x + i, entity.y + j))[3];
+                color = splitARGB(getColorLoopsafe(entity.x + i, entity.y + j));
+                val = color[1]+color[2]+color[3];
                 weightX -= val;
                 weightY -= val;
             }
         }
         for (int i = 0; i > -width/rangeFactor; i-=width/rangeFactor/rangeResulution) {//top left
             for (int j = 0; j < width/rangeFactor; j+=width/rangeFactor/rangeResulution) {
-                int val = splitARGB(getColorLoopsafe(entity.x + i, entity.y + j))[3];
+                color = splitARGB(getColorLoopsafe(entity.x + i, entity.y + j));
+                val = color[1]+color[2]+color[3];
                 weightX += val;
                 weightY -= val;
             }
         }
         for (int i = 0; i < width/rangeFactor; i+=width/rangeFactor/rangeResulution) {//bottom right
             for (int j = 0; j > -width/rangeFactor; j-=width/rangeFactor/rangeResulution) {
-                int val = splitARGB(getColorLoopsafe(entity.x + i, entity.y + j))[3];
+                color = splitARGB(getColorLoopsafe(entity.x + i, entity.y + j));
+                val = color[1]+color[2]+color[3];
                 weightX -= val;
                 weightY += val;
             }
         }
         for (int i = 0; i > -width/rangeFactor; i-=width/rangeFactor/rangeResulution) {//bottom left
             for (int j = 0; j > -width/rangeFactor; j-=width/rangeFactor/rangeResulution) {
-                int val = splitARGB(getColorLoopsafe(entity.x + i, entity.y + j))[3];
+                color = splitARGB(getColorLoopsafe(entity.x + i, entity.y + j));
+                val = color[1]+color[2]+color[3];
                 weightX += val;
                 weightY += val;
             }
