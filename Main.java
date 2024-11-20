@@ -20,6 +20,7 @@ import javax.swing.JTextField;
  *
  * WIP: add pixels that need to be dimmed into an array, then dim only the pixels that need to be dimmed, not everything. then remove items from array when they reach black
  * WIP: one thread per operaton: one for moving the entity, other for dimming the screen.
+ * TODO: why did i make an entity class? there already exists a point class that i'm using...
  * TODO: multiple entity support
  *
 */
@@ -40,10 +41,13 @@ class Program {
     private static final int rangeResulution = 3;
 
     //how many times per sec the background brigtnes gets reduced (performance intensive!)
-    private static final int fadeUpdateRate = 15;
+    private static final int fadeUpdateRate = 60;
 
     //how many pixels thiccc the line is that the entity makes (performance intensive!)
     private static final int thickness = 1;
+    
+    //the color that the moving entity leaves behind
+    private static final int headColor = convertARGB(255,255,230,180);
 
     private static int prevMovementDirX = 0;
     private static int prevMovementDirY = 0;
@@ -51,7 +55,7 @@ class Program {
     private static BufferedImage image = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
     private static Entity entity;
     private static JFrame frame = new JFrame("my cool window!");
-    private static Map<Point, Raster> pixelsToUpdate = new LinkedHashMap<>();//contains all non-black pixels, so that they can be decayed
+    private static Map<Point, Integer> pixelsToUpdate = new LinkedHashMap<>();//contains all non-black pixels, so that they can be decayed
 
     public static void main(String[] args) {
         //argumetn parsing
@@ -75,7 +79,7 @@ class Program {
         entity = new Entity(width/2, height/2);
 
         //update loops
-        ScheduledExecutorService executor = Executors.newScheduledThreadPool(2);//does this just magically allow me to make stuff multithreaded? (i replaced it with Executors.newSingleThreadSceduledExecutor)
+        ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor();//does this just magically allow me to make stuff multithreaded? (i replaced it with Executors.newSingleThreadSceduledExecutor)
         executor.scheduleAtFixedRate(Program::entityUpdate, 0, dt, TimeUnit.NANOSECONDS);
         executor.scheduleAtFixedRate(Program::imageProcessing, 0, 1000000/fadeUpdateRate, TimeUnit.MICROSECONDS);
         //executor.scheduleAtFixedRate(Program::render, 0, 1000/60, TimeUnit.MILLISECONDS);// use when multithreading
@@ -85,6 +89,7 @@ class Program {
         frame.getContentPane().add(new JTextField("moving thingy"));// equivalent to: `frame.add(new JTextField(""));`
         frame.add(new JLabel(new ImageIcon(image)));
         frame.pack();
+        //frame.setSize(1500, 1000);
         frame.setVisible(true);
     }
 
@@ -104,28 +109,28 @@ class Program {
         int weightY = 0;
         for (int i = 0; i < width/rangeFactor; i+=width/rangeFactor/rangeResulution) {//top right
             for (int j = 0; j < width/rangeFactor; j+=width/rangeFactor/rangeResulution) {
-                int val = splitARGB(getColorLoopsafe(entity.x + i, entity.y + j)).get(3);
+                int val = splitARGB(getColorLoopsafe(entity.x + i, entity.y + j))[3];
                 weightX -= val;
                 weightY -= val;
             }
         }
         for (int i = 0; i > -width/rangeFactor; i-=width/rangeFactor/rangeResulution) {//top left
             for (int j = 0; j < width/rangeFactor; j+=width/rangeFactor/rangeResulution) {
-                int val = splitARGB(getColorLoopsafe(entity.x + i, entity.y + j)).get(3);
+                int val = splitARGB(getColorLoopsafe(entity.x + i, entity.y + j))[3];
                 weightX += val;
                 weightY -= val;
             }
         }
         for (int i = 0; i < width/rangeFactor; i+=width/rangeFactor/rangeResulution) {//bottom right
             for (int j = 0; j > -width/rangeFactor; j-=width/rangeFactor/rangeResulution) {
-                int val = splitARGB(getColorLoopsafe(entity.x + i, entity.y + j)).get(3);
+                int val = splitARGB(getColorLoopsafe(entity.x + i, entity.y + j))[3];
                 weightX -= val;
                 weightY += val;
             }
         }
         for (int i = 0; i > -width/rangeFactor; i-=width/rangeFactor/rangeResulution) {//bottom left
             for (int j = 0; j > -width/rangeFactor; j-=width/rangeFactor/rangeResulution) {
-                int val = splitARGB(getColorLoopsafe(entity.x + i, entity.y + j)).get(3);
+                int val = splitARGB(getColorLoopsafe(entity.x + i, entity.y + j))[3];
                 weightX += val;
                 weightY += val;
             }
@@ -156,8 +161,8 @@ class Program {
         //make the line thiccc 
         for (int y = 0; y < thickness; y++) {//bottom left
             for (int x = 0; x < thickness; x++) {
-                setColorLoopsafe(entity.x+x, entity.y+y, convertARGB(255));
-                pixelsToUpdate.put(new Point(entity.x+x, entity.y+y), image.getTile(x, y));
+                setColorLoopsafe(entity.x+x, entity.y+y, headColor);
+                pixelsToUpdate.put(new Point(entity.x+x, entity.y+y), image.getRGB(entity.x+x, entity.y+y));
             }
         }
         frame.repaint();// remove this and use the scheduler with render() func instead when multithreading
@@ -166,24 +171,26 @@ class Program {
 
     //dim all pixels
     private static void imageProcessing() {
-        //int black = 0;//black to non-black ratio for bebugging
-        //int nonBlack = 0;
         //loops through each non-black pixel
-        int[] color = new int[4];
-        pixelsToUpdate.forEach((Point p, Raster raster) -> {
-            raster.getPixel(p.x, p.y, color);
-            int r = Math.max(color[1]-5, 0);
-            int g = Math.max(color[2]-3, 0);
-            int b = Math.max(color[3]-2, 0);
-            image.setRGB(p.x, p.y, convertARGB(255,r,g,b));
+        int[] colors = new int[4];
+        List<Map.Entry<Point,Integer>> entriesToRemove = new ArrayList<>(pixelsToUpdate.size());
+        for (Map.Entry<Point, Integer> entry : pixelsToUpdate.entrySet()) {
+            colors = splitARGB(entry.getValue());
+            //System.out.print(" || r:" + colors[1] + " g:" + colors[2] + " b:" + colors[3]);
+            int r = Math.max(colors[1]-5, 0);
+            int g = Math.max(colors[2]-3, 0);
+            int b = Math.max(colors[3]-2, 0);
+            image.setRGB(entry.getKey().x, entry.getKey().y, convertARGB(255,r,g,b));
+            pixelsToUpdate.replace(entry.getKey(), convertARGB(255,r,g,b));
             if (r+g+b == 0) {
-                pixelsToUpdate.remove(p);
-                System.out.println("Removing Pixel at: " + p.x + " | " + p.y);
+                entriesToRemove.add(entry);
             }
-            System.out.println("p: " + p + " | size: " + pixelsToUpdate.size());
-        });
-
-        //System.out.println("black to non-black pixel ratio: " + (double)nonBlack / (double)black);
+        }
+        //if pixel is black, stop updating it
+        for (Map.Entry<Point,Integer> entry : entriesToRemove) {
+            pixelsToUpdate.remove(entry.getKey(), entry.getValue());
+        }
+        //System.out.println("size: " + pixelsToUpdate.size());
     }
 
 
@@ -202,7 +209,7 @@ class Program {
     private static int convertARGB(int a, int r, int g, int b) {
         return (clamp(a, 0, 255) << 24) | 
                (clamp(r, 0, 255) << 16) | 
-               (clamp(g, 0, 255) << 8) | 
+               (clamp(g, 0, 255) << 8 ) | 
                 clamp(b, 0, 255);
     }
 
@@ -213,13 +220,13 @@ class Program {
              clamp(lightness, 0, 255);
     }
 
-    private static List<Integer> splitARGB(int ARGB) {//lmao the bitshifting got me into such a C++ mindset that at first i used a Vector instead of a List
-        List<Integer> l = new ArrayList<>();
-        l.add((ARGB >>> 24) & 0xFF);// `& 0xFF` zeroes the negative indicator bit
-        l.add((ARGB >>> 16) & 0xFF);
-        l.add((ARGB >>> 8 ) & 0xFF);
-        l.add((ARGB >>> 0 ) & 0xFF);
-        return l;
+    private static int[] splitARGB(int ARGB) {//lmao the bitshifting got me into such a C++ mindset that at first i used a Vector instead of a List
+        int[] i = new int[4];
+        i[0] = ((ARGB >>> 24) & 0xFF);// `& 0xFF` zeroes the negative indicator bit
+        i[1] = ((ARGB >>> 16) & 0xFF);
+        i[2] = ((ARGB >>> 8 ) & 0xFF);
+        i[3] = ((ARGB >>> 0 ) & 0xFF);
+        return i;
     }
 
     private static int clamp(int value, int min, int max) {
