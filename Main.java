@@ -2,6 +2,7 @@ import java.awt.Point;
 import java.awt.PointerInfo;
 import java.awt.image.BufferedImage;
 import java.awt.image.Raster;
+import java.lang.StackWalker.StackFrame;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -31,7 +32,7 @@ class Program {
     private static final int width = 1920; 
     
     //how likely the entity is to step away from nearby color (smaller value = more likely). Negative values supported, makes it step twoard color instead
-    private static final int colorAvoidance = 100;
+    private static final int colorAvoidance = 100000;
     
     //the size of the square in which the entity looks for colors, to move away from them (in fraction of canvas size, where 10 on a 1000x1000 window is 100 pixels)
     private static final int rangeFactor = 10;
@@ -43,7 +44,7 @@ class Program {
     private static final int fadeUpdateRate = 20;
     
     //how many values of brightness is subtracted from each pixel in each fade update (ARGB format)
-    private static final int[] decayRates = new int[]{0, 2, 4, 9};
+    private static final int[] decayRates = new int[]{0, 20, 40, 90};
 
     //the color that the moving entity leaves behind
     private static final int headColor = convertARGB(255,200,255,255);
@@ -56,7 +57,7 @@ class Program {
     private static int prevMovementDirY = 0;
     private static int dt = 1000000000/5000;//default update rate
     private static BufferedImage image = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
-    private static Point entity;
+    private static int[] entity = {width/2, height/2} ;
     private static JFrame frame = new JFrame("Random Pixel");
     private static Map<Point, Integer> pixelsToUpdate = new LinkedHashMap<>();//contains all non-black pixels, so that they can be decayed
 
@@ -79,7 +80,6 @@ class Program {
                 image.setRGB(x, y, convertARGB(0));//all black
             }
         }
-        entity = new Point(width/2, height/2);
 
         //update loops
         ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor();
@@ -105,73 +105,80 @@ class Program {
 
     //entity movement and coloring loop
     private static void entityUpdate() {
-        //Add more weight to directions where there's less brighness by counting 
-        //the total brightness in each 4 sectors, and determining the direction of least color.
-        //Positive cordinates go twoard up-right
-        int weightX = 0;
-        int weightY = 0;
-        int val = 0;
-        int[] color;
-        for (int i = 0; i < width/rangeFactor; i+=width/rangeFactor/rangeResulution) {//top right
-            for (int j = 0; j < width/rangeFactor; j+=width/rangeFactor/rangeResulution) {
-                color = splitARGB(getColorLoopsafe(entity.x + i, entity.y + j));
-                val = color[1]+color[2]+color[3];
-                weightX -= val;
-                weightY -= val;
+        try {
+            //Add more weight to directions where there's less brighness by counting 
+            //the total brightness in each 4 sectors, and determining the direction of least color.
+            //Positive cordinates go twoard up-right
+            int weightX = 0;
+            int weightY = 0;
+            int val = 0;
+            int[] color;
+            for (int i = 0; i < width/rangeFactor; i+=width/rangeFactor/rangeResulution) {//top right
+                for (int j = 0; j < width/rangeFactor; j+=width/rangeFactor/rangeResulution) {
+                    color = splitARGB(getColorLoopsafe(entity[0] + i, entity[1] + j));
+                    val = color[1]+color[2]+color[3];
+                    weightX -= val;
+                    weightY -= val;
+                }
             }
-        }
-        for (int i = 0; i > -width/rangeFactor; i-=width/rangeFactor/rangeResulution) {//top left
-            for (int j = 0; j < width/rangeFactor; j+=width/rangeFactor/rangeResulution) {
-                color = splitARGB(getColorLoopsafe(entity.x + i, entity.y + j));
-                val = color[1]+color[2]+color[3];
-                weightX += val;
-                weightY -= val;
+            for (int i = 0; i > -width/rangeFactor; i-=width/rangeFactor/rangeResulution) {//top left
+                for (int j = 0; j < width/rangeFactor; j+=width/rangeFactor/rangeResulution) {
+                    color = splitARGB(getColorLoopsafe(entity[0] + i, entity[1] + j));
+                    val = color[1]+color[2]+color[3];
+                    weightX += val;
+                    weightY -= val;
+                }
             }
-        }
-        for (int i = 0; i < width/rangeFactor; i+=width/rangeFactor/rangeResulution) {//bottom right
-            for (int j = 0; j > -width/rangeFactor; j-=width/rangeFactor/rangeResulution) {
-                color = splitARGB(getColorLoopsafe(entity.x + i, entity.y + j));
-                val = color[1]+color[2]+color[3];
-                weightX -= val;
-                weightY += val;
+            for (int i = 0; i < width/rangeFactor; i+=width/rangeFactor/rangeResulution) {//bottom right
+                for (int j = 0; j > -width/rangeFactor; j-=width/rangeFactor/rangeResulution) {
+                    color = splitARGB(getColorLoopsafe(entity[0] + i, entity[1] + j));
+                    val = color[1]+color[2]+color[3];
+                    weightX -= val;
+                    weightY += val;
+                }
             }
-        }
-        for (int i = 0; i > -width/rangeFactor; i-=width/rangeFactor/rangeResulution) {//bottom left
-            for (int j = 0; j > -width/rangeFactor; j-=width/rangeFactor/rangeResulution) {
-                color = splitARGB(getColorLoopsafe(entity.x + i, entity.y + j));
-                val = color[1]+color[2]+color[3];
-                weightX += val;
-                weightY += val;
+            for (int i = 0; i > -width/rangeFactor; i-=width/rangeFactor/rangeResulution) {//bottom left
+                for (int j = 0; j > -width/rangeFactor; j-=width/rangeFactor/rangeResulution) {
+                    color = splitARGB(getColorLoopsafe(entity[0] + i, entity[1] + j));
+                    val = color[1]+color[2]+color[3];
+                    weightX += val;
+                    weightY += val;
+                }
             }
-        }
 
-        //calculate movement directions
-        int moveRight = (int)Math.round(Math.random()*3000-1500) + weightX/colorAvoidance + prevMovementDirX*300 ;
-        int moveUp = (int)Math.round(Math.random()*3000-1500) + weightY/colorAvoidance + prevMovementDirY*300;
-        if (moveRight > 1000) {
-            entity.x += 1;
-            prevMovementDirX = 1;
-            if (entity.x >= width) entity.x = 0;
-        } else if (moveRight < -1000) {
-            entity.x -= 1;
-            prevMovementDirX = -1;
-            if (entity.x <= 0) entity.x = width-1;
-        }
-        if (moveUp > 1000) {
-            entity.y += 1;
-            prevMovementDirY = 1;
-            if (entity.y >= height) entity.y = 0;
-        } else if (moveUp < -1000) {
-            entity.y -= 1;
-            prevMovementDirY = -1;
-            if (entity.y <= 0) entity.y = height-1;
+            //calculate movement directions
+            int moveRight = (int)Math.round(Math.random()*3000-1500) + weightX/colorAvoidance + prevMovementDirX*300 ;
+            int moveUp = (int)Math.round(Math.random()*3000-1500) + weightY/colorAvoidance + prevMovementDirY*300;
+            if (moveRight > 1000) {
+                entity[0] += 1;
+                prevMovementDirX = 1;
+                if (entity[0] >= width) entity[0] = 0;
+            } else if (moveRight < -1000) {
+                entity[0] -= 1;
+                prevMovementDirX = -1;
+                if (entity[0] <= 0) entity[0] = width-1;
+            }
+            if (moveUp > 1000) {
+                entity[1] += 1;
+                prevMovementDirY = 1;
+                if (entity[1] >= height) entity[1] = 0;
+            } else if (moveUp < -1000) {
+                entity[1] -= 1;
+                prevMovementDirY = -1;
+                if (entity[1] <= 0) entity[1] = height-1;
+            }
 
-        }
-        //make the line thiccc 
-        for (int y = 0; y < thickness; y++) {//bottom left
-            for (int x = 0; x < thickness; x++) {
-                setColorLoopsafe(entity.x+x, entity.y+y, headColor);
-                pixelsToUpdate.put(new Point(entity.x+x, entity.y+y), image.getRGB(entity.x+x, entity.y+y));
+            //make the line thiccc 
+            for (int y = 0; y < thickness; y++) {//bottom left
+                for (int x = 0; x < thickness; x++) {
+                    setColorLoopsafe(entity[0]+x, entity[1]+y, headColor);
+                    pixelsToUpdate.put(new Point(entity[0]+x, entity[1]+y), image.getRGB(entity[0]+x, entity[1]+y));
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("Error: " + e.getMessage());
+            for (StackTraceElement s : e.getStackTrace()) {
+                System.out.println("    " + s.toString());
             }
         }
     }
@@ -205,12 +212,11 @@ class Program {
 
     //utility funcs
     private static int getColorLoopsafe(int x, int y) {
-        return image.getRGB((x % width + width) % width, (y % height + height) % height);
+        return image.getRGB(Math.clamp(x, 0, width-1), Math.clamp(y, 0, height-1));
     }
 
     private static void setColorLoopsafe(int x, int y, int color) {
-        image.setRGB((x % width + width) % width, (y % height + height) % height, color);
-        return;
+        image.setRGB(Math.clamp(x, 0, width), Math.clamp(y, 0, height), color);
     }
 
 
