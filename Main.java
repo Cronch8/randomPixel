@@ -27,8 +27,8 @@ import javax.swing.JTextField;
 class Program {
 
     //size of the canvas
-    private static final int height = 600; 
-    private static final int width = 1500; 
+    private static final int height = 1080; 
+    private static final int width = 1920; 
     
     //how likely the entity is to step away from nearby color (smaller value = more likely). Negative values supported, makes it step twoard color instead
     private static final int colorAvoidance = 100;
@@ -82,10 +82,10 @@ class Program {
         entity = new Point(width/2, height/2);
 
         //update loops
-        ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor();//does this just magically allow me to make stuff multithreaded? (i replaced it with Executors.newSingleThreadSceduledExecutor)
+        ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor();
         executor.scheduleAtFixedRate(Program::entityUpdate, 0, dt, TimeUnit.NANOSECONDS);
         executor.scheduleAtFixedRate(Program::imageProcessing, 0, 1000000/fadeUpdateRate, TimeUnit.MICROSECONDS);
-        //executor.scheduleAtFixedRate(Program::render, 0, 1000/60, TimeUnit.MILLISECONDS);// use when multithreading
+        executor.scheduleAtFixedRate(Program::render, 0, 1000/60, TimeUnit.MILLISECONDS);// use when multithreading
 
         //make the window
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -97,7 +97,7 @@ class Program {
     }
 
 
-    //rendering (use when implemting multithreading)
+    //rendering
     private static void render() {
         frame.repaint();
     }
@@ -165,8 +165,8 @@ class Program {
             entity.y -= 1;
             prevMovementDirY = -1;
             if (entity.y <= 0) entity.y = height-1;
-        }
 
+        }
         //make the line thiccc 
         for (int y = 0; y < thickness; y++) {//bottom left
             for (int x = 0; x < thickness; x++) {
@@ -174,7 +174,6 @@ class Program {
                 pixelsToUpdate.put(new Point(entity.x+x, entity.y+y), image.getRGB(entity.x+x, entity.y+y));
             }
         }
-        frame.repaint();// remove this and use the scheduler with render() func instead when multithreading
     }
 
 
