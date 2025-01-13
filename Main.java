@@ -61,6 +61,15 @@ class Program {
     private static JFrame frame = new JFrame("Random Pixel");
     private static Map<Point, Integer> pixelsToUpdate = new LinkedHashMap<>();//contains all non-black pixels, so that they can be decayed
 
+    //profiling stuff
+    private static boolean profiling = false;
+    private static long maxUpdateCount = 10000000;//after X entity updates stop the profiling
+    private static long updateCount = 0;
+    private static long fadeUpdateCount = 0;
+    private static long renderCount = 0;
+    private static long startTime = 0;
+    private static long endTime = 0;
+
     public static void main(String[] args) {
         //argumetn parsing
         if (args.length == 1) {
@@ -81,6 +90,9 @@ class Program {
             }
         }
 
+        //some profiling to measure speed of different implemetations
+        startProfiling();
+        
         //update loops
         ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor();
         executor.scheduleAtFixedRate(Program::entityUpdate, 0, dt, TimeUnit.NANOSECONDS);
@@ -96,10 +108,29 @@ class Program {
         frame.setVisible(true);
     }
 
+    private static void startProfiling() {
+        profiling = true;
+        startTime = System.nanoTime();
+    }
+
+    private static void endProfiling() {
+        endTime = System.nanoTime();
+        profiling = false;
+        double time = (double) (endTime - startTime) / 1000000000.0;
+        System.out.printf("time taken for %d updates: %f sec\n", updateCount, time);
+        System.out.println("entity updates: " + updateCount);
+        System.out.println("frame fade updates: " + fadeUpdateCount);
+        System.out.println("times frame painted: " + renderCount);
+        System.out.println();
+        System.out.println("times frame painted: " + renderCount);
+    }
+
+
 
     //rendering
     private static void render() {
         frame.repaint();
+        renderCount++;
     }
 
 
@@ -175,6 +206,12 @@ class Program {
                     pixelsToUpdate.put(new Point(entity[0]+x, entity[1]+y), image.getRGB(entity[0]+x, entity[1]+y));
                 }
             }
+            updateCount++;
+            if (updateCount > maxUpdateCount) {
+                if (profiling) {
+                    endProfiling();
+                }
+            }
         } catch (Exception e) {
             System.err.println("Error: " + e.getMessage());
             for (StackTraceElement s : e.getStackTrace()) {
@@ -206,6 +243,7 @@ class Program {
             pixelsToUpdate.remove(entry.getKey(), entry.getValue());
         }
         //System.out.println("size: " + pixelsToUpdate.size());
+        fadeUpdateCount++;
     }
 
 
