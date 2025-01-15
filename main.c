@@ -21,7 +21,7 @@ int main() {
     Uint32 height = 1080;
     Uint32 entity_x = width/2;
     Uint32 entity_y = height/2;
-    Uint32 running = 200; // how many times to run
+    Uint32 running = 1000; // how many times to run
     Uint32 frame_delay = 1000/100; // FPS in milliseconds basically
     Uint8 color[4] = {200, 255, 255, 255}; // RGBA
     Uint8 clear_color[4] = {0, 0, 0, 255}; // RGBA
