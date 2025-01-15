@@ -1,0 +1,70 @@
+==========================================================
+LOG 1
+==========================================================
+settings used for testing
+--------------------------------------------------
+commit: fa0fa2c83525b5edf49e9970bde93de0efcf8ab5 
+
+
+//size of the canvas
+int height = 1080; 
+int width = 1920; 
+
+//how likely the entity is to step away from nearby color (smaller value = more likely). Negative values supported, makes it step twoard color instead
+int colorAvoidance = 100000;
+
+//the size of the square in which the entity looks for colors, to move away from them (in fraction of canvas size, where 10 on a 1000x1000 window is 100 pixels)
+int rangeFactor = 10;
+
+//how many pixels are sampled in each direction to look for colors (performance intensive!)
+int rangeResulution = 6;
+
+//how many times per sec the background brigtnes gets reduced (performance intensive!)
+int fadeUpdateRate = 20;
+
+//how many values of brightness is subtracted from each pixel in each fade update (ARGB format)
+int[] decayRates = new int[]{0, 20, 40, 90};
+
+//the color that the moving entity leaves behind
+int headColor = convertARGB(255,200,255,255);
+
+//how many pixels thiccc the line is that the entity makes (performance intensive!)
+int thickness = 1;
+
+
+terminal copy
+--------------------------
+
+┌── cronch @ pop-os (master) ~/code/randomPixel
+└ java Main.java 1000000
+time taken for 10000001 updates: 15.410953 sec
+entity updates: 10000001
+frame fade updates: 200
+times frame painted: 625
+
+times frame painted: 625
+┌── cronch @ pop-os (master) ~/code/randomPixel
+└ java Main.java 1000000
+time taken for 10000001 updates: 15.781731 sec
+entity updates: 10000001
+frame fade updates: 200
+times frame painted: 625
+
+times frame painted: 625
+┌── cronch @ pop-os (master) ~/code/randomPixel
+└ java Main.java 1000000
+time taken for 10000001 updates: 15.837365 sec
+entity updates: 10000001
+frame fade updates: 200
+times frame painted: 625
+
+times frame painted: 625
+┌── cronch @ pop-os (master) ~/code/randomPixel
+└ java Main.java 1000000
+time taken for 10000001 updates: 14.913578 sec
+entity updates: 10000001
+frame fade updates: 200
+times frame painted: 625
+
+
+average time: 15.48567

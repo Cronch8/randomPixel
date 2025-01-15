@@ -44,10 +44,10 @@ class Program {
     private static final int fadeUpdateRate = 20;
     
     //how many values of brightness is subtracted from each pixel in each fade update (ARGB format)
-    private static final int[] decayRates = new int[]{0, 20, 40, 90};
+    private static final int[] decayRates = new int[]{0, 2, 5, 9};
 
     //the color that the moving entity leaves behind
-    private static final int headColor = convertARGB(255,200,255,255);
+    private static final int headColor = convertARGB(255,170,255,255);
 
     //how many pixels thiccc the line is that the entity makes (performance intensive!)
     private static final int thickness = 1;
