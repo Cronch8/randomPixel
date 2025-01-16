@@ -1,4 +1,3 @@
-
 #include <SDL2/SDL_blendmode.h>
 #include <SDL2/SDL_events.h>
 #include <SDL2/SDL_keycode.h>
@@ -8,25 +7,31 @@
 #include <SDL2/SDL_stdinc.h>
 #include <SDL2/SDL_timer.h>
 #include <SDL2/SDL_video.h>
+#include <signal.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <SDL2/SDL.h>
 #include <string.h>
 #include <stdlib.h>
 
+Uint8 running = 1;
+
+void handle_exit() {
+    running = 0;
+}
 
 int main() {
 
     Uint32 width = 1920;
     Uint32 height = 1080;
+    Uint32 entities[entity_count*2]; // formated as [ex_1, ey_1, ex_2, ey_2 ... ]
     Uint32 entity_x = width/2;
     Uint32 entity_y = height/2;
-    Uint32 running = 500; // how many times to run
     Uint32 frame_delay = 1000/100; // FPS in milliseconds basically
     Uint8 color[4] = {200, 255, 255, 255}; // RGBA
     Uint8 clear_color[4] = {0, 0, 0, 255}; // RGBA
     Uint8 color_decay[4] = {1, 4, 2, 0}; // RGBA
-    Uint32 entity_updates_per_draw = 2000;
+    Uint32 entity_updates_per_draw = 20000;
     Uint32 entity_update_count = 0;
 
     SDL_Window* window;
@@ -42,7 +47,7 @@ int main() {
     SDL_SetRenderDrawColor(renderer, clear_color[0], clear_color[1], clear_color[2], clear_color[3]);
     SDL_RenderClear(renderer);
 
-    printf("starting %d loops\n", running);
+    printf("Starting!\nuse ctrl+c in the terminal to close");
     while (running) {
 
         while (entity_update_count <= entity_updates_per_draw) {
@@ -72,17 +77,15 @@ int main() {
             image[i+3] = image[i+3] <= color_decay[3] ? image[i+3] : image[i+3] - color_decay[3];
         }
         SDL_UpdateTexture(texture, NULL, image, width*4);
-        printf("count: %d -- loc x: %d, y: %d\n", running, entity_x, entity_y);
+        //printf("loc x: %d, y: %d\n", entity_x, entity_y);
 
         entity_update_count = 0;
-        if (SDL_PollEvent(event) && event != NULL && event->type == SDL_QUIT) {
-            break;
-        }
+        signal(SIGTERM, handle_exit);
+        signal(SIGINT, handle_exit);
 
         SDL_RenderClear(renderer);
         SDL_RenderCopy(renderer, texture, NULL, NULL);
         SDL_RenderPresent(renderer);
-        running--;
         SDL_Delay(frame_delay);
     }
     printf("finished!\n");
