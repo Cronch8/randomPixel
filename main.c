@@ -14,6 +14,16 @@
 #include <string.h>
 #include <stdlib.h>
 
+#define max(a,b) \
+   ({ __typeof__ (a) _a = (a); \
+       __typeof__ (b) _b = (b); \
+     _a > _b ? _a : _b; })
+
+#define min(a,b) \
+   ({ __typeof__ (a) _a = (a); \
+       __typeof__ (b) _b = (b); \
+     _a < _b ? _a : _b; })
+
 Uint8 running = 1;
 
 void handle_exit() {
@@ -24,14 +34,17 @@ int main() {
 
     Uint32 width = 1920;
     Uint32 height = 1080;
-    Uint32 entities[entity_count*2]; // formated as [ex_1, ey_1, ex_2, ey_2 ... ]
-    Uint32 entity_x = width/2;
-    Uint32 entity_y = height/2;
+    Uint32 entity_count = 20;
+    Uint32 entities[entity_count*2]; // formated as: ex1, ey1, ex2, ey2 ... 
+    for (int i = 0; i < entity_count*2; i+=2) {
+        entities[i+0] = width/2;
+        entities[i+1] = height/2;
+    }
     Uint32 frame_delay = 1000/100; // FPS in milliseconds basically
     Uint8 color[4] = {200, 255, 255, 255}; // RGBA
     Uint8 clear_color[4] = {0, 0, 0, 255}; // RGBA
     Uint8 color_decay[4] = {1, 4, 2, 0}; // RGBA
-    Uint32 entity_updates_per_draw = 20000;
+    Uint32 entity_updates_per_draw = 200;
     Uint32 entity_update_count = 0;
 
     SDL_Window* window;
@@ -39,7 +52,6 @@ int main() {
     SDL_Init(SDL_INIT_EVERYTHING);
     SDL_CreateWindowAndRenderer(width, height, SDL_WINDOW_SHOWN, &window, &renderer);
     SDL_Texture* texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, width, height);
-    printf("2"); fflush(stdout);
     SDL_Event* event = NULL;
     Uint8 image[width*4*height]; // formated as [r,g,b,a,r,g ... a,r,g,b,a]
     void* pixels;
@@ -47,28 +59,41 @@ int main() {
     SDL_SetRenderDrawColor(renderer, clear_color[0], clear_color[1], clear_color[2], clear_color[3]);
     SDL_RenderClear(renderer);
 
-    printf("Starting!\nuse ctrl+c in the terminal to close");
+    printf("Starting!\nuse ctrl+c in the terminal to close\n");
     while (running) {
 
         while (entity_update_count <= entity_updates_per_draw) {
-            entity_x += random()%3 - 1;
-            entity_y += random()%3 - 1;
-            if (entity_x > width) {
-                entity_x = 0;
-            } else if (entity_x < 0) {
-                entity_x = width;
+            for (Uint32 i = 0; i < entity_count*2; i+=2) {
+                entities[i+0] += random()%3 - 1;
+                entities[i+1] += random()%3 - 1;
+                entities[i+0] = min(max(entities[i+0], 0), width-1);
+                entities[i+1] = min(max(entities[i+1], 0), height-1);
+                /* // with looping
+                entities[i] += random()%3 - 1;
+                entities[i+1] += random()%3 - 1;
+                if (entities[i] > width) {
+                    entities[i] = 0;
+                } else if (entities[i] < 0) {
+                    entities[i] = width;
+                }
+                if (entities[i+1] > height) {
+                    entities[i+1] = 0;
+                } else if (entities[i+1] < 0) {
+                    entities[i+1] = height;
+                }
+                */
+                image[entities[i]*4 + entities[i+1]*width*4 + 0] = color[0];
+                image[entities[i]*4 + entities[i+1]*width*4 + 1] = color[1];
+                image[entities[i]*4 + entities[i+1]*width*4 + 2] = color[2];
+                image[entities[i]*4 + entities[i+1]*width*4 + 3] = color[3];
             }
-            if (entity_y > height) {
-                entity_y = 0;
-            } else if (entity_y < 0) {
-                entity_y = height;
-            }
-            image[entity_x*4 + entity_y*width*4 + 0] = color[0];
-            image[entity_x*4 + entity_y*width*4 + 1] = color[1];
-            image[entity_x*4 + entity_y*width*4 + 2] = color[2];
-            image[entity_x*4 + entity_y*width*4 + 3] = color[3];
             entity_update_count++;
         }
+
+        // log entities
+        //for (int i = 0; i < entity_count; i+=2) {
+        //    printf("x: %d, y: %d >", entities[i], entities[i+1]);
+        //}
 
         for (Uint32 i = 0; i < width*4*height; i+=4) {
             image[i+0] = image[i+0] <= color_decay[0] ? image[i+0] : image[i+0] - color_decay[0];
