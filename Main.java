@@ -50,7 +50,7 @@ class Program {
     private static final int headColor = convertARGB(255,170,255,255);
 
     //how many pixels thiccc the line is that the entity makes (performance intensive!)
-    private static final int thickness = 1;
+    private static final int thickness = 3;
 
     //initialization
     private static int prevMovementDirX = 0;
@@ -181,20 +181,20 @@ class Program {
             int moveRight = (int)Math.round(Math.random()*3000-1500) + weightX/colorAvoidance + prevMovementDirX*300 ;
             int moveUp = (int)Math.round(Math.random()*3000-1500) + weightY/colorAvoidance + prevMovementDirY*300;
             if (moveRight > 1000) {
-                entity[0] += 1;
+                entity[0] += 3;
                 prevMovementDirX = 1;
                 if (entity[0] >= width) entity[0] = 0;
             } else if (moveRight < -1000) {
-                entity[0] -= 1;
+                entity[0] -= 3;
                 prevMovementDirX = -1;
                 if (entity[0] <= 0) entity[0] = width-1;
             }
             if (moveUp > 1000) {
-                entity[1] += 1;
+                entity[1] += 3;
                 prevMovementDirY = 1;
                 if (entity[1] >= height) entity[1] = 0;
             } else if (moveUp < -1000) {
-                entity[1] -= 1;
+                entity[1] -= 3;
                 prevMovementDirY = -1;
                 if (entity[1] <= 0) entity[1] = height-1;
             }
